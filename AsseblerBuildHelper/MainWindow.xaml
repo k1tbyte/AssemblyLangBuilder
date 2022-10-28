@@ -107,6 +107,7 @@
                     </Grid>
 
                     <Border HorizontalAlignment="Center" BorderThickness="1" BorderBrush="Purple" AllowDrop="True" Drop="Border_Drop"
+                            DragEnter="Border_DragEnter" DragLeave="Border_DragLeave"
                     Opacity="0.03" Width="250" Height="150" Margin="0 30 0 0" Background="White" CornerRadius="10"/>
 
                 </Grid>
@@ -164,17 +165,17 @@
                 </StackPanel>
 
                 <StackPanel Margin="10 8 0 0" Orientation="Horizontal">
-                    <TextBlock Text="Opening assembly results after build" Foreground="LightGray"
+                    <TextBlock Text="Open the program after build" Foreground="LightGray"
                                FontSize="11" FontWeight="Medium" Margin="0 0 10 0" VerticalAlignment="Center"/>
-                    <ToggleButton x:Name="openLogAfter"  Style="{StaticResource checkbox}" 
-                               Width="25" Height="25" Background="#25293a" Click="openLogAfter_Click"/>
+                    <ToggleButton x:Name="openProgramAfter"  Style="{StaticResource checkbox}" 
+                               Width="25" Height="25" Background="#25293a" Click="openProgramAfter_Click"/>
                 </StackPanel>
 
                 <StackPanel Margin="10 8 0 0" Orientation="Horizontal">
                     <TextBlock Text="Save logs about the assembly result" Foreground="LightGray"
                                FontSize="11" FontWeight="Medium" Margin="0 0 10 0" VerticalAlignment="Center"/>
                     <ToggleButton x:Name="saveLog"  Style="{StaticResource checkbox}" 
-                               Width="25" Height="25" Background="#25293a" Click="openLogAfter_Click"/>
+                               Width="25" Height="25" Background="#25293a" Click="saveLog_Click"/>
                 </StackPanel>
 
             </StackPanel>

@@ -15,7 +15,7 @@ namespace AsseblerBuildHelper
         internal string LastSrcPath { get; set; }
         internal bool DontGenObj { get; set; }
         internal bool ConvertToCp { get; set; }
-        internal bool OpenAssemblyResults { get; set; }
+        internal bool OpenProgramAfterBuild { get; set; }
         internal bool SaveLog { get; set; }
 
     }

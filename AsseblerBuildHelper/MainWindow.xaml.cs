@@ -25,6 +25,7 @@ namespace AsseblerBuildHelper
     {
         private string FileName;
         private string SrcPath;
+        private readonly string DragDropMsg = "Choose a source code .asm\r\nand drag it here.";
         public MainWindow()
         {
             InitializeComponent();
@@ -44,7 +45,7 @@ namespace AsseblerBuildHelper
 
 
             convertEncoding.IsChecked = Config.properties.ConvertToCp;
-            openLogAfter.IsChecked    = Config.properties.OpenAssemblyResults;
+            openProgramAfter.IsChecked    = Config.properties.OpenProgramAfterBuild;
             dontGenObj.IsChecked      = Config.properties.DontGenObj;
             saveLog.IsChecked         = Config.properties.SaveLog;
             
@@ -67,6 +68,7 @@ namespace AsseblerBuildHelper
             if (!file.EndsWith(".asm"))
             {
                 System.Windows.Forms.MessageBox.Show("Select .asm file!");
+                dragText.Text = DragDropMsg;
                 return;
             }
             
@@ -74,6 +76,7 @@ namespace AsseblerBuildHelper
             FileName = SelectedText.Text = file.Split('\\').Last();
             SrcPath  = Config.properties.LastSrcPath = file;
             Config.Save();
+            dragText.Text = DragDropMsg;
         }
 
         private long UnixTimeNow()
@@ -138,7 +141,7 @@ namespace AsseblerBuildHelper
                 System.IO.File.Copy(SrcPath, MasmPath.Text + "\\bin\\"+FileName, true);
             }
 
-            if ((saveLog.IsChecked == true || openLogAfter.IsChecked == true) && !System.IO.Directory.Exists(".\\Logs"))
+            if ((saveLog.IsChecked == true) && !System.IO.Directory.Exists(".\\Logs"))
             {
                 System.IO.Directory.CreateDirectory(".\\Logs");
             }
@@ -155,7 +158,7 @@ namespace AsseblerBuildHelper
                 process.Start();
                 var result = process.StandardOutput.ReadToEnd();
 
-                if(saveLog.IsChecked == true || openLogAfter.IsChecked == true)
+                if(saveLog.IsChecked == true)
                      System.IO.File.WriteAllText(logFile, result);
                 process.WaitForExit();   
                 if(result.Contains("error"))
@@ -165,8 +168,17 @@ namespace AsseblerBuildHelper
             }
 
 
-            if(openLogAfter.IsChecked == true)
-                Process.Start(logFile);
+            if(openProgramAfter.IsChecked == true)
+            {
+                using (var process = new Process())
+                {
+                    process.StartInfo.UseShellExecute = false;
+                    process.StartInfo.CreateNoWindow = false;
+                    process.StartInfo.FileName = "cmd";
+                    process.StartInfo.Arguments = $"/c cd /d \"{outputPath}\" && \"{FileName.Replace(".asm",".exe")}\" && pause";
+                    process.Start();
+                }
+            }
 
             System.IO.File.Delete(MasmPath.Text + "\\bin\\" + FileName);
            
@@ -212,23 +224,44 @@ namespace AsseblerBuildHelper
             Config.Save();
         }
 
-        private void openLogAfter_Click(object sender, RoutedEventArgs e)
+        private void openProgramAfter_Click(object sender, RoutedEventArgs e)
         {
-            Config.properties.OpenAssemblyResults = openLogAfter.IsChecked == true;
+            Config.properties.OpenProgramAfterBuild = openProgramAfter.IsChecked == true;
             Config.Save();
         }
 
         private void OpenEditor_Click(object sender, RoutedEventArgs e)
         {
-            if (String.IsNullOrEmpty(SrcPath) && !System.IO.File.Exists(SrcPath))
+            if(SelectedText.Text == "File not selected")
+            {
+                return;
+            }
+            else if (String.IsNullOrEmpty(SrcPath) || !System.IO.File.Exists(SrcPath))
             {
                 System.Windows.Forms.MessageBox.Show($"File {FileName} is not found!");
-                SelectedText.Text = Config.properties.LastSrcPath = SrcPath = null;
+                Config.properties.LastSrcPath = SrcPath = null;
+                SelectedText.Text = "File not selected";
                 Config.Save();
                 return;
             }
             Process.Start(SrcPath);
 
+        }
+
+        private void Border_DragEnter(object sender, DragEventArgs e)
+        {
+            dragText.Text = "Release the left\nmouse button";
+        }
+
+        private void Border_DragLeave(object sender, DragEventArgs e)
+        {
+            dragText.Text = DragDropMsg;
+        }
+
+        private void saveLog_Click(object sender, RoutedEventArgs e)
+        {
+            Config.properties.SaveLog = saveLog.IsChecked == true;
+            Config.Save();
         }
     }
 }

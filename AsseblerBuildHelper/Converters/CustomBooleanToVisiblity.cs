@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace Steam_Account_Manager.Infrastructure.Converters
+namespace AssemblyLangBuilder.Infrastructure.Converters
 {
     public class BooleanConverter<T> : IValueConverter
     {

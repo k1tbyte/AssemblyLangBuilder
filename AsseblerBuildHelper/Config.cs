@@ -5,12 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AsseblerBuildHelper
+namespace AssemblyLangBuilder
 {
     [Serializable]
     internal class CfgProperties
     {
-        internal string MASMPath { get; set; }
         internal string OutputPath { get; set; }
         internal string LastSrcPath { get; set; }
         internal bool DontGenObj { get; set; }

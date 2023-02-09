@@ -1,54 +1,101 @@
 ﻿using Microsoft.Win32;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
+using System.Security.Principal;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using static System.Net.WebRequestMethods;
 
-namespace AsseblerBuildHelper
+namespace AssemblyLangBuilder
 {
     public partial class MainWindow : Window
     {
         private string FileName;
         private string SrcPath;
-        private readonly string DragDropMsg = "Choose a source code .asm\r\nand drag it here.";
+        private readonly string DragDropMsg = "Choose a source code .asm\r\nand drag it here or click";
+        private static readonly string DestPath = "D:\\masm64";
+
         public MainWindow()
         {
+            App.Current.DispatcherUnhandledException += (sender, e) => System.Windows.Forms.MessageBox.Show(e.Exception.ToString());
+/*            if(AppDomain.CurrentDomain.BaseDirectory.Length > 3)
+            {
+                System.Windows.Forms.MessageBox.Show("You must run the program from a path that does not contain attachments. For example: \"D:\\\", \"E:\\\". Drive C:\\ may require administrator rights.");
+                App.Current.Shutdown();
+            }*/
+
             InitializeComponent();
             Config.Load();
-            if(!String.IsNullOrEmpty(Config.properties.MASMPath))
-                MasmPath.Text = Config.properties.MASMPath;
             
             if(!String.IsNullOrEmpty(Config.properties.OutputPath))
                 OutputPath.Text = Config.properties.OutputPath;
-            
+
+            if (IsRunningAsAdministrator())
+                adminTitle.Visibility = Visibility.Visible;
+
+
             if (!String.IsNullOrEmpty(Config.properties.LastSrcPath) && System.IO.File.Exists(Config.properties.LastSrcPath))
             {
                 SrcPath = Config.properties.LastSrcPath;
                 FileName = SelectedText.Text = SrcPath.Split('\\').Last();
             }
-                
+
+            if (!Directory.Exists(DestPath))
+            {
+                try
+                {
+                    ExtractSource();
+                }
+                catch (Exception e)
+                {
+                    System.Windows.Forms.MessageBox.Show("ERROR: " + e.ToString());
+                }
+            }
+            else
+                expandPropBttn.IsChecked = true;
 
 
-            convertEncoding.IsChecked = Config.properties.ConvertToCp;
+            convertEncoding.IsChecked     = Config.properties.ConvertToCp;
             openProgramAfter.IsChecked    = Config.properties.OpenProgramAfterBuild;
-            dontGenObj.IsChecked      = Config.properties.DontGenObj;
-            saveLog.IsChecked         = Config.properties.SaveLog;
-            
+            dontGenObj.IsChecked          = Config.properties.DontGenObj;
+            saveLog.IsChecked             = Config.properties.SaveLog;
+        }
+
+        private static bool IsRunningAsAdministrator()
+        {
+            // Get current Windows user
+            WindowsIdentity windowsIdentity = WindowsIdentity.GetCurrent();
+
+            // Get current Windows user principal
+            WindowsPrincipal windowsPrincipal = new WindowsPrincipal(windowsIdentity);
+
+            // Return TRUE if user is in role "Administrator"
+            return windowsPrincipal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
+        private async void ExtractSource()
+        {
+            splash.Visibility = Visibility.Visible;
+            await Task.Run(() =>
+            {
+                using (var stream = new MemoryStream(Properties.Resources.MASM64))
+                {
+                    using (var archive = new ZipArchive(stream))
+                    {
+                        if (!Directory.Exists(DestPath))
+                            Directory.CreateDirectory(DestPath);
+
+                        archive.ExtractToDirectory(DestPath);
+                    }
+                }
+                
+            });
+            splash.Visibility = Visibility.Collapsed;
+            expandPropBttn.IsChecked = true;
         }
 
         private void close_Click(object sender, RoutedEventArgs e)
@@ -92,11 +139,6 @@ namespace AsseblerBuildHelper
                 System.Windows.Forms.MessageBox.Show("Source file is not selected!");
                 return;
             }
-            else if(String.IsNullOrEmpty(MasmPath.Text))
-            {
-                System.Windows.Forms.MessageBox.Show("MASM dir is not selected!");
-                return;
-            }
             else if (!System.IO.File.Exists(SrcPath))
             {
                 System.Windows.Forms.MessageBox.Show($"File {FileName} is not found!");
@@ -104,41 +146,33 @@ namespace AsseblerBuildHelper
                 Config.Save();
                 return;
             }
-            else if (!Directory.Exists(MasmPath.Text))
-            {
-                MasmPath.Text = Config.properties.MASMPath = null;
-                Config.Save();
-                System.Windows.Forms.MessageBox.Show("MASM dir is not found!");
-                return;
-            }
             else if(!String.IsNullOrEmpty(OutputPath.Text) && OutputPath.Text != "Click for select . . ." && !Directory.Exists(OutputPath.Text))
             {
                 Config.properties.OutputPath = null;
                 OutputPath.Text = "Click for select . . .";
                 Config.Save();
-                System.Windows.Forms.MessageBox.Show("Output dir is not valid!");
-                
+                System.Windows.Forms.MessageBox.Show("Output dir is not valid!");   
                 return;
 
             }
 
             var outputPath = (String.IsNullOrWhiteSpace(OutputPath.Text) || OutputPath.Text == "Click for select . . .") ? Directory.GetCurrentDirectory() : OutputPath.Text;
-            var outputFileExe = MasmPath.Text + "\\bin\\" + FileName.Replace(".asm", ".exe");
+            var outputFileExe = $"{DestPath}\\bin64\\" + FileName.Replace(".asm", ".exe");
             var outputFileObj = outputFileExe.Replace(".exe", ".obj");
             var objCommand = dontGenObj.IsChecked == true ? $"DEL /F /Q \"{outputFileObj}\"" : $"move /Y \"{outputFileObj}\" \"{outputPath}\"";
 
             if (convertEncoding.IsChecked == true)
             {
                 var output = System.IO.File.ReadAllLines(SrcPath);
-                if(System.IO.File.Exists($"{MasmPath.Text}\\bin\\{FileName}"))
+                if(System.IO.File.Exists($"{DestPath}\\bin64\\{FileName}"))
                 {
-                    System.IO.File.Delete($"{MasmPath.Text}\\bin\\{FileName}");
+                    System.IO.File.Delete($"{DestPath}\\bin64\\{FileName}");
                 }
-                System.IO.File.WriteAllLines($"{MasmPath.Text}\\bin\\{FileName}", output, Encoding.GetEncoding(866));
+                System.IO.File.WriteAllLines($"{DestPath}\\bin64\\{FileName}", output, Encoding.GetEncoding(866));
             }
             else
             {
-                System.IO.File.Copy(SrcPath, MasmPath.Text + "\\bin\\"+FileName, true);
+                System.IO.File.Copy(SrcPath, "{DestPath}\\bin64\\" + FileName, true);
             }
 
             if ((saveLog.IsChecked == true) && !System.IO.Directory.Exists(".\\Logs"))
@@ -152,21 +186,20 @@ namespace AsseblerBuildHelper
                 process.StartInfo.UseShellExecute = false;
                 process.StartInfo.CreateNoWindow = true;
                 process.StartInfo.FileName = "cmd";
-                process.StartInfo.Arguments =  $"/c cd /d \"{MasmPath.Text}\"\\bin && ml.exe /c /coff \"{FileName}\" && link.exe /SUBSYSTEM:CONSOLE \"{FileName.Replace(".asm",".obj")}\" &&" +
-                    $" move /Y \"{outputFileExe}\" \"{outputPath}\" && {objCommand}";
+                process.StartInfo.Arguments =  $"/c cd /d \"{DestPath}\\bin64\" && ml64.exe /c \"{FileName}\" && link.exe /SUBSYSTEM:CONSOLE /ENTRY:main \"{FileName.Replace(".asm",".obj")}\" &&" +
+                    $" move /Y \"{outputFileExe}\" \"{outputPath}\" && {objCommand}"; ;
                 process.StartInfo.RedirectStandardOutput = true;
                 process.Start();
                 var result = process.StandardOutput.ReadToEnd();
 
                 if(saveLog.IsChecked == true)
-                     System.IO.File.WriteAllText(logFile, result);
+                     File.WriteAllText(logFile, result);
                 process.WaitForExit();   
                 if(result.Contains("error"))
                 {
                     System.Windows.Forms.MessageBox.Show(result,"Compile error");
                 }
             }
-
 
             if(openProgramAfter.IsChecked == true)
             {
@@ -180,22 +213,8 @@ namespace AsseblerBuildHelper
                 }
             }
 
-            System.IO.File.Delete(MasmPath.Text + "\\bin\\" + FileName);
+            System.IO.File.Delete($"{DestPath}\\bin64\\" + FileName);
            
-        }
-
-        private void SetMasmDir_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
-            {
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK && !String.IsNullOrEmpty(dialog.SelectedPath))
-                {
-                    MasmPath.Text = dialog.SelectedPath;
-                    Config.properties.MASMPath = dialog.SelectedPath;
-                    Config.Save();
-                }
-            }
-                
         }
 
         private void SetOutputPath_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -262,6 +281,29 @@ namespace AsseblerBuildHelper
         {
             Config.properties.SaveLog = saveLog.IsChecked == true;
             Config.Save();
+        }
+
+        private void GenerateClick(object sender, RoutedEventArgs e)
+        {
+            var outputPath = (String.IsNullOrWhiteSpace(OutputPath.Text) || OutputPath.Text == "Click for select . . ." || !Directory.Exists(OutputPath.Text)) ? Directory.GetCurrentDirectory() : OutputPath.Text;
+
+            if (File.Exists(outputPath + "\\sample.asm"))
+                File.Delete(outputPath + "\\sample.asm");
+
+            File.WriteAllText(outputPath + "\\sample.asm", Properties.Resources.SampleAsm);
+            Process.Start(outputPath + "\\sample.asm").Dispose();
+        }
+
+        private void AttachFile(object sender, MouseButtonEventArgs e)
+        {
+            var dialog = new OpenFileDialog() { Filter = "Assembly source code (.asm)|*.asm" };
+            if(dialog.ShowDialog() == true)
+            {
+                FileName = SelectedText.Text = dialog.FileName.Split('\\').Last();
+                SrcPath = Config.properties.LastSrcPath = dialog.FileName;
+                Config.Save();
+            }
+            e.Handled = true;
         }
     }
 }

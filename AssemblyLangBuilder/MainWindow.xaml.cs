@@ -17,16 +17,17 @@ namespace AssemblyLangBuilder
         private string FileName;
         private string SrcPath;
         private readonly string DragDropMsg = "Choose a source code .asm\r\nand drag it here or click";
-        private static readonly string DestPath = "D:\\masm64";
+        private readonly string DestPath = "masm64";
 
         public MainWindow()
         {
             App.Current.DispatcherUnhandledException += (sender, e) => System.Windows.Forms.MessageBox.Show(e.Exception.ToString());
-/*            if(AppDomain.CurrentDomain.BaseDirectory.Length > 3)
+            if (AppDomain.CurrentDomain.BaseDirectory.Length > 3)
             {
                 System.Windows.Forms.MessageBox.Show("You must run the program from a path that does not contain attachments. For example: \"D:\\\", \"E:\\\". Drive C:\\ may require administrator rights.");
                 App.Current.Shutdown();
-            }*/
+            }
+            DestPath = AppDomain.CurrentDomain.BaseDirectory + DestPath;
 
             InitializeComponent();
             Config.Load();
@@ -172,7 +173,7 @@ namespace AssemblyLangBuilder
             }
             else
             {
-                System.IO.File.Copy(SrcPath, "{DestPath}\\bin64\\" + FileName, true);
+                System.IO.File.Copy(SrcPath, $"{DestPath}\\bin64\\" + FileName, true);
             }
 
             if ((saveLog.IsChecked == true) && !System.IO.Directory.Exists(".\\Logs"))
@@ -303,6 +304,12 @@ namespace AssemblyLangBuilder
                 SrcPath = Config.properties.LastSrcPath = dialog.FileName;
                 Config.Save();
             }
+            e.Handled = true;
+        }
+
+        private void Path_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start("https://github.com/Explynex/AssemblyLangBuilder").Dispose();
             e.Handled = true;
         }
     }

@@ -34,7 +34,6 @@ namespace AssemblyLangBuilder
             else
             {
                 properties = new CfgProperties();
-                properties.SaveLog = true;
                 WriteToBinaryFile<CfgProperties>(".\\properties.dat", properties);
             }
         }
